@@ -1,0 +1,51 @@
+.form_wrap_pixelcode input:not([type='checkbox']), .form_wrap_pixelcode textarea, .form_wrap_pixelcode select {
+    border: 1px solid #00000005 !important;
+    background: rgb(247, 247, 247) !important;
+    outline: none !important;
+}
+
+.form_wrap_pixelcode textarea {
+    min-height: 150px;
+}
+
+.form_wrap_pixelcode textarea:focus {
+    outline: none;
+    border: none;
+}
+.form_wrap_pixelcode select:focus {
+    outline: none;
+    border: none;
+}
+
+.form_wrap_pixelcode input[type=submit] {
+    background: red !important;
+    height: 50px;
+    width: 200px;
+    border-radius: 30px !important;
+    font-weight: bold;
+}
+
+.form_wrap_pixelcode {
+    width: 70%;
+    border: 1px solid #00000005;
+    padding: 20px;
+    box-shadow: 0px 0px 5px #00000010;
+    border-radius: 10px;
+    background: #FFF;
+    margin-top: 50px;
+}
+
+.form_wrap_pixelcode .px_group_input{
+    display: flex;
+    position: relative;
+}
+
+.form_wrap_pixelcode .px_group_input div:nth-child(1) input{
+    padding-right: 60px;
+}
+
+.form_wrap_pixelcode .px_group_input div:nth-child(2) {
+    position: absolute;
+    width: 50px;
+    right: 0;
+}
