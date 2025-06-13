@@ -41,12 +41,12 @@ function caf_create_all_tables() {
     $air_fields = "
         id mediumint(9) NOT NULL AUTO_INCREMENT,
         quote_number varchar(100),
+        submitted_at datetime DEFAULT CURRENT_TIMESTAMP NOT NULL,
+        type varchar(100),
         shipping_type varchar(100),
         quotation_date date,
         dimensions varchar(100),
-        dimension_unit varchar(10),
         cargo_weight varchar(100),
-        weight_unit varchar(10),
         nz_duties varchar(100),
         nz_gst varchar(100),
         transit_time varchar(100),
@@ -54,7 +54,6 @@ function caf_create_all_tables() {
         shipping_total varchar(100),
         customer_name varchar(100),
         customer_email varchar(100),
-        submitted_at datetime DEFAULT CURRENT_TIMESTAMP NOT NULL,
         PRIMARY KEY (id)
     ";
 
@@ -62,13 +61,15 @@ function caf_create_all_tables() {
     $ocean_fields = "
         id mediumint(9) NOT NULL AUTO_INCREMENT,
         quote_number varchar(100),
-        quotation_date date,
+        submitted_at datetime DEFAULT CURRENT_TIMESTAMP NOT NULL,
+        type varchar(100),
         shipping_type varchar(100),
+        quotation_date date,
         customer_name varchar(100),
         customer_email varchar(100),
         subject varchar(100),  -- New field for subject in Ocean Freight
         shipping_total varchar(100),
-        submitted_at datetime DEFAULT CURRENT_TIMESTAMP NOT NULL,
+
         PRIMARY KEY (id)
     ";
 
@@ -88,7 +89,7 @@ function caf_render_form($type = 'Air') {
     $table_name = ($type === 'Ocean') ? 'caf_ocean_entries' : 'caf_air_entries';
 
     ?>
-    <div class="wrap">
+    <div class="form_wrap">
         <h2><?php echo $type; ?> Freight Quote Form</h2>
         <form method="post">
             <style>
@@ -101,7 +102,7 @@ function caf_render_form($type = 'Air') {
             <?php if ($type === 'Air') : ?>
                 <!-------------------------------------------------- Air Freight Fields -------------------------------------------------------------->
                 <div class="caf-row">
-                    <div class="caf-col caf-field"><input type="text" name="quote_number" placeholder="Quote Number" required></div>
+                    <div class="caf-col caf-field"><input style="text-transform: uppercase;" type="text" name="quote_number" placeholder="Quote Number" required></div>
                     <div class="caf-col caf-field">
                         <select placeholder="Select" name="shipping_type">
                             <option>Select Shipping Type</option>
@@ -129,7 +130,7 @@ function caf_render_form($type = 'Air') {
                     <div class="px_group_input caf-col caf-field">
                         <div class="caf-col caf-field"><input type="text" name="cargo_weight" placeholder="Cargo Weight" required></div>
                         <div class="caf-col caf-field">
-                            <select name="cargo_unit">
+                            <select name="weight_unit">
                                 <option value="lbs">lbs</option>
                                 <option value="kgs">kgs</option>
                             </select>
@@ -140,7 +141,7 @@ function caf_render_form($type = 'Air') {
                 </div>
 
                 <div class="caf-row">
-                    <div class="caf-col caf-field"><input type="text" name="nz_duties" placeholder="NZ Duties Amou"></div>
+                    <div class="caf-col caf-field"><input type="text" name="nz_duties" placeholder="NZ Duties Amount"></div>
                     <div class="caf-col caf-field"><input type="text" name="nz_gst" placeholder="NZ GST"></div>
                 </div>
 
@@ -175,19 +176,23 @@ function caf_render_form($type = 'Air') {
         global $wpdb;
         $table = $wpdb->prefix . $table_name;
 
+        $dimensions = sanitize_text_field($_POST['dimensions']);
+        $unit = sanitize_text_field($_POST['dimension_unit']);
+        $cargo_weight = sanitize_text_field($_POST['cargo_weight']);
+        $weight_unit = sanitize_text_field($_POST['weight_unit']);
+
         $data = [
             'quote_number'     => sanitize_text_field($_POST['quote_number']),
-            'quotation_date'   => sanitize_text_field($_POST['quotation_date']),
-            'shipping_type'    => $type,  
             'submitted_at'     => current_time('mysql'),
+            'type'             => $type,  
         ];
         
         // For Air Freight (additional fields for Air Freight form)
         if ($type === 'Air') {
-            $data['dimensions']     = sanitize_text_field($_POST['dimensions']);
-            $data['dimension_unit'] = sanitize_text_field($_POST['dimension_unit']);
-            $data['cargo_weight']   = sanitize_text_field($_POST['cargo_weight']);
-            $data['weight_unit']    = sanitize_text_field($_POST['weight_unit']);
+            $data['shipping_type']  = sanitize_text_field($_POST['shipping_type']); 
+            $data['quotation_date'] = sanitize_text_field($_POST['quotation_date']); 
+            $data['dimensions'] = $dimensions . ' ' . $unit;
+            $data['cargo_weight'] = $cargo_weight . ' ' . $weight_unit;
             $data['nz_duties']      = sanitize_text_field($_POST['nz_duties']);
             $data['nz_gst']         = sanitize_text_field($_POST['nz_gst']);
             $data['transit_time']   = sanitize_text_field($_POST['transit_time']);
@@ -213,7 +218,37 @@ function caf_render_form($type = 'Air') {
         $customer_email = $data['customer_email'];
 
         wp_mail($admin_email, "New $type Freight Quote", print_r($data, true));
-        wp_mail($customer_email, "Your $type Freight Quote", "Hi {$data['customer_name']},\n\nThanks for submitting your quote.\n\nRegards,\nAdmin", ['From: ' . $admin_email]);
+
+        $view_link = 'http://localhost/pixelcode/view-page?quote_id=' . $data['quote_number'] . '&id=' . sanitize_text_field($_POST['id']) . '&type=' . $type;
+
+        $customer_message = "
+        <html>
+            <body>
+                <h2>Welcome, {$data['customer_name']}!</h2>
+                <p>Thank you for submitting your freight quote request. We’ve received your submission and will process it shortly.</p>
+                <p><strong>Quote Number:</strong> {$data['quote_number']}</p>
+                <p><a href='{$view_link}' style='
+                    background-color: #0073aa;
+                    color: white;
+                    padding: 10px 15px;
+                    text-decoration: none;
+                    border-radius: 5px;
+                '>View Your Quote</a></p>
+                <p>Kind regards,<br>The Admin Team</p>
+            </body>
+        </html>
+        ";
+
+        wp_mail(
+            $customer_email,
+            $subject,
+            $customer_message,
+            [
+                'Content-Type: text/html; charset=UTF-8',
+                'From: ' . $admin_email
+            ]
+        );
+
 
         echo "<div class='updated'><p>$type Freight quote submitted successfully!</p></div>";
     }
@@ -250,9 +285,57 @@ function caf_display_entries() {
             <td>" . esc_html($row->customer_email) . "</td>
             <td>" . esc_html($row->source) . "</td>
             <td>" . esc_html($row->submitted_at) . "</td>
-            <td><button>click</button></td>
+            <td><button>view</button></td>
         </tr>";
     }
 
     echo "</tbody></table></div>";
 }
+
+
+function my_custom_shortcode() {
+    ob_start();
+
+    if(isset($_GET['quote_id'])){
+        global $wpdb;
+
+        $id       = intval($_GET['id']);
+        $type     = sanitize_text_field($_GET['type']);
+        $quote_id = sanitize_text_field($_GET['quote_id']);
+
+        // Determine table based on type
+        $table = '';
+
+        if ($type === 'Air') {
+            $table = $wpdb->prefix . 'caf_air_entries';
+        } elseif ($type === 'Ocean') {
+            $table = $wpdb->prefix . 'caf_ocean_entries';
+        } else {
+            echo "Invalid quote type.";
+            return;
+        }
+
+        // Fetch data
+        $quote = $wpdb->get_row($wpdb->prepare("SELECT * FROM $table WHERE id = %d", $id));
+
+
+        if ($quote) {
+            echo "<table border='1' cellpadding='8'>";
+            foreach ($quote as $key => $value) {
+                echo "<tr><th>" . esc_html(ucwords(str_replace('_', ' ', $key))) . "</th><td>" . esc_html($value) . "</td></tr>";
+            }
+            echo "</table>";
+        } else {
+            echo "No data found for this quote.";
+        }
+
+
+    }
+    
+    ?>
+    
+
+    <?php
+    return ob_get_clean();
+}
+add_shortcode('custom_section', 'my_custom_shortcode');
