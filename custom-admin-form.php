@@ -227,7 +227,7 @@ function pixelcode_render_form($type = 'Air') {
 
             <tr>
                 <th><label for="transit_time">Transit Time *</label></th>
-                <td><input type="time" name="transit_time" value="00:00" required /></td>
+                <td><input type="time" name="transit_time" value="12:00" required /></td>
                 <td colspan="2"></td>
             </tr>
 
@@ -316,7 +316,7 @@ function pixelcode_render_form($type = 'Air') {
             </tr>
             <tr>
                 <th><label for="transit_time">Transit Time *</label></th>
-                <td><input type="time" name="transit_time" value="00:00" required /></td>
+                <td><input type="time" name="transit_time" value="12:00" required /></td>
                 <th><label for="cargo_volume">Cargo Volume (CBM) *</label></th>
                 <td><input type="text" name="cargo_volume" required /></td>
             </tr>
@@ -480,9 +480,9 @@ if ($result) {
         $subject = "$type Freight Quote - {$data['quote_number']}";
 
         $customer_message = "<html><body><h2>Hello {$data['customer_name']},</h2>
-        <p>Thank you for your quote request. View your quote below:</p>
+        <p>Thanks for contacting us regarding your shipment. Please click below to view your quote.</p>
         <p><a href='$view_link' style='background:#0073aa;color:white;padding:10px 15px;border-radius:5px;text-decoration:none;'>View Quote</a></p>
-        <p>Kind regards,<br>The Admin Team</p></body></html>";
+        <p>We look forward to hearing from you<br>Paul <br/> USA Direct LLC</p></body></html>";
 
         wp_mail($admin_email, "New $type Freight Quote", print_r($data, true));
         wp_mail($customer_email, $subject, $customer_message, ['Content-Type: text/html; charset=UTF-8', 'From: ' . $admin_email]);
@@ -521,23 +521,27 @@ function my_custom_shortcode() {
     ob_start();
     if (isset($_GET['quote_id'])) {
         global $wpdb;
+
         $id = intval($_GET['id']);
         $type = sanitize_text_field($_GET['type']);
-        $quote_id = sanitize_text_field($_GET['quote_id']);
-
+        
         $table = ($type === 'Air') ? $wpdb->prefix . 'pixelcode_air_entries' : (($type === 'Ocean') ? $wpdb->prefix . 'pixelcode_ocean_entries' : '');
         if (!$table) return 'Invalid quote type.';
-
+        
         $quote = $wpdb->get_row($wpdb->prepare("SELECT * FROM $table WHERE id = %d", $id));
+        
         if ($quote) {
             echo "<table border='1' cellpadding='8'>";
             foreach ($quote as $key => $value) {
+                if (in_array($key, ['id', 'submitted_at'])) continue;         // Skip id and submitted_at
+                if (is_null($value) || $value === '') continue;               // Skip empty or null fields
                 echo "<tr><th>" . esc_html(ucwords(str_replace('_', ' ', $key))) . "</th><td>" . esc_html($value) . "</td></tr>";
             }
             echo "</table>";
         } else {
             echo "No data found for this quote.";
         }
+
     }
     return ob_get_clean();
 }
